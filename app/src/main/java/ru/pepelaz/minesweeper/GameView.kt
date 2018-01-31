@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.*
 import android.view.MotionEvent
 import android.view.View
+import android.widget.Toast
+import java.lang.System.currentTimeMillis
 
 
 /**
@@ -19,6 +21,7 @@ class GameView(context: Context) : View(context) {
     var dy: Float  = 0f
     val blockWidth = 120
     var blockHeight = 120
+    var lastTime: Long = 0
 
     var game: Game? = null
 
@@ -73,9 +76,27 @@ class GameView(context: Context) : View(context) {
         }
     }
 
+
+
+
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         //circleX = event?.x
         //circleY = event?.y
+
+        val i: Int = ( (event?.x?:0f) / blockWidth).toInt()
+        val j: Int = ( (event?.y?:0f) / blockHeight).toInt()
+
+        when(event?.action) {
+            MotionEvent.ACTION_DOWN -> {
+                lastTime = currentTimeMillis()
+            }
+            MotionEvent.ACTION_UP -> {
+                Toast.makeText(context,  i.toString() + ", " +  j.toString()
+                        + ", " + (currentTimeMillis() - lastTime).toString(),
+                        Toast.LENGTH_SHORT).show()
+            }
+        }
+
         invalidate()
         return true
     }
