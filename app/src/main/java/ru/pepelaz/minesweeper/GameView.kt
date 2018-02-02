@@ -16,7 +16,8 @@ class GameView(context: Context) : View(context) {
     val paint: Paint
     //var circleX: Float?
     //var circleY: Float?
-    val bmp: Bitmap
+    val bmpUnclicked: Bitmap
+    val bmpFlag: Bitmap
     var dx: Float = 0f
     var dy: Float  = 0f
     val blockWidth = 120
@@ -36,7 +37,8 @@ class GameView(context: Context) : View(context) {
         //circleX = 100f
        //circleY = 100f
 
-        bmp = BitmapFactory.decodeResource(resources, R.drawable.block_unclicked)
+        bmpUnclicked = BitmapFactory.decodeResource(resources, R.drawable.block_unclicked)
+        bmpFlag = BitmapFactory.decodeResource(resources, R.drawable.n1)
     }
 
     override fun draw(canvas: Canvas?) {
@@ -61,7 +63,7 @@ class GameView(context: Context) : View(context) {
 
         val game = game?:return
 
-        val srcRect = Rect(0, 0, bmp.width, bmp.height)
+        val srcRect = Rect(0, 0, bmpUnclicked.width, bmpUnclicked.height)
         for (i in 0..game.countX - 1) {
             for(j in 0..game.countY - 1) {
 
@@ -71,33 +73,41 @@ class GameView(context: Context) : View(context) {
                 val y2 = ((j+1) *  blockHeight * dy).toInt()
 
                 val dstRect = Rect(x1, y1, x2, y2)
-                canvas?.drawBitmap(bmp, srcRect, dstRect, paint)
+                when(game.blockState(i,j)) {
+                    0 -> {
+                        canvas?.drawBitmap(bmpUnclicked, srcRect, dstRect, paint)
+                    }
+                    2 -> {
+                        canvas?.drawBitmap(bmpFlag, srcRect, dstRect, paint)
+                    }
+                }
             }
         }
     }
 
-
-
-
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         //circleX = event?.x
         //circleY = event?.y
+        val game = game?:return true
 
-        val i: Int = ( (event?.x?:0f) / blockWidth).toInt()
-        val j: Int = ( (event?.y?:0f) / blockHeight).toInt()
+        val i: Int = ( (event?.x?:0f) / (blockWidth * dx)).toInt()
+        val j: Int = ( (event?.y?:0f) / (blockHeight * dy)).toInt()
 
         when(event?.action) {
             MotionEvent.ACTION_DOWN -> {
                 lastTime = currentTimeMillis()
             }
             MotionEvent.ACTION_UP -> {
-                Toast.makeText(context,  i.toString() + ", " +  j.toString()
-                        + ", " + (currentTimeMillis() - lastTime).toString(),
-                        Toast.LENGTH_SHORT).show()
+
+                if (currentTimeMillis() - lastTime < 1000) {
+                    game.onShortClick(i, j)
+                    invalidate()
+                } else {
+                    game.onLongClick(i, j)
+                    invalidate()
+                }
             }
         }
-
-        invalidate()
         return true
     }
 }
