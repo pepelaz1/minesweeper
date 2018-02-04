@@ -6,6 +6,10 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.Toast
 import java.lang.System.currentTimeMillis
+import java.util.ArrayList
+import android.R.attr.name
+
+
 
 
 /**
@@ -16,8 +20,11 @@ class GameView(context: Context) : View(context) {
     val paint: Paint
     //var circleX: Float?
     //var circleY: Float?
+    val bmpClicked: Bitmap
     val bmpUnclicked: Bitmap
     val bmpFlag: Bitmap
+    val bmpBomb: Bitmap
+    val bmpNumbers = ArrayList<Bitmap>()
     var dx: Float = 0f
     var dy: Float  = 0f
     val blockWidth = 120
@@ -38,7 +45,14 @@ class GameView(context: Context) : View(context) {
        //circleY = 100f
 
         bmpUnclicked = BitmapFactory.decodeResource(resources, R.drawable.block_unclicked)
-        bmpFlag = BitmapFactory.decodeResource(resources, R.drawable.n1)
+        bmpClicked = BitmapFactory.decodeResource(resources, R.drawable.block_clicked)
+        bmpFlag = BitmapFactory.decodeResource(resources, R.drawable.flag)
+        bmpBomb = BitmapFactory.decodeResource(resources, R.drawable.bomb)
+
+        for (n in 1..8) {
+            val resId = resources.getIdentifier("n" + n.toString(), "drawable", context.packageName)
+            bmpNumbers.add(BitmapFactory.decodeResource(resources, resId))
+        }
     }
 
     override fun draw(canvas: Canvas?) {
@@ -50,6 +64,9 @@ class GameView(context: Context) : View(context) {
         val canvasHeight = canvas?.height?:0;
 
         if (game == null) {
+
+
+
             val cntX = canvasWidth / blockWidth
             val cntY = canvasHeight / blockHeight
             game = Game(cntX, cntY)
@@ -74,11 +91,21 @@ class GameView(context: Context) : View(context) {
 
                 val dstRect = Rect(x1, y1, x2, y2)
                 when(game.blockState(i,j)) {
-                    0 -> {
+                    BlockState.Flag -> {
+                        canvas?.drawBitmap(bmpFlag, srcRect, dstRect, paint)
+                    }
+                    BlockState.Bomb -> {
+                        canvas?.drawBitmap(bmpBomb, srcRect, dstRect, paint)
+                    }
+                    BlockState.Unclicked -> {
                         canvas?.drawBitmap(bmpUnclicked, srcRect, dstRect, paint)
                     }
-                    2 -> {
-                        canvas?.drawBitmap(bmpFlag, srcRect, dstRect, paint)
+                    BlockState.Clicked -> {
+                        canvas?.drawBitmap(bmpClicked, srcRect, dstRect, paint)
+                    }
+                    else -> {
+
+                        canvas?.drawBitmap(bmpNumbers[game.blockState(i,j).state - 1], srcRect, dstRect, paint)
                     }
                 }
             }
