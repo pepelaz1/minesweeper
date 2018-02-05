@@ -126,7 +126,7 @@ class GameView(context: Context) : View(context) {
             }
             MotionEvent.ACTION_UP -> {
 
-                if (currentTimeMillis() - lastTime < 1000) {
+                if (currentTimeMillis() - lastTime < 300) {
                     game.onShortClick(i, j)
                     invalidate()
                 } else {

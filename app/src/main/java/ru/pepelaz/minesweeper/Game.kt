@@ -33,7 +33,7 @@ class Game {
     }
 
     private fun generateBombs() {
-        bombsCount = (countX * countY) / 100 * 20
+        bombsCount = ((countX * countY) / 100f * 20f).toInt()
         val random = Random()
         for(n in 0..bombsCount - 1) {
             while(true){
@@ -106,13 +106,52 @@ class Game {
                 cnt++
         }
 
-        blocks[i][j].state = BlockState.values()[cnt]
 
+        blocks[i][j].state = BlockState.values()[cnt]
         if (cnt == 0)
             exploreFreeSpace(i, j)
     }
 
     fun exploreFreeSpace(i: Int, j: Int) {
+        if ((i - 1 >= 0) && (j - 1 >= 0)) {
+            if (blocks[i-1][j-1].state == BlockState.Unclicked)
+                calcBombsAround(i - 1, j - 1)
+        }
+
+        if (i - 1 >= 0 ) {
+            if (blocks[i-1][j].state == BlockState.Unclicked)
+                calcBombsAround(i - 1, j)
+        }
+
+        if (i - 1 >= 0 && (j + 1 <= countY - 1)) {
+            if (blocks[i-1][j+1].state == BlockState.Unclicked)
+                calcBombsAround(i - 1, j + 1)
+        }
+
+        if (j - 1 >= 0) {
+            if (blocks[i][j-1].state == BlockState.Unclicked)
+                calcBombsAround(i, j - 1)
+        }
+
+        if (j + 1 <= countY - 1) {
+            if (blocks[i][j+1].state == BlockState.Unclicked)
+                calcBombsAround(i, j + 1)
+        }
+
+        if ((i + 1 <= countX - 1) && (j - 1 >= 0)) {
+            if (blocks[i + 1][j - 1].state == BlockState.Unclicked)
+                calcBombsAround(i + 1, j - 1)
+        }
+
+        if (i + 1 <= countX - 1 ) {
+            if (blocks[i + 1][j].state == BlockState.Unclicked)
+                calcBombsAround(i + 1, j )
+        }
+
+        if ((i + 1 <= countX - 1) && (j + 1 <= countY - 1)) {
+            if (blocks[i + 1][j + 1].state == BlockState.Unclicked)
+                calcBombsAround(i + 1, j + 1)
+        }
 
     }
 }
