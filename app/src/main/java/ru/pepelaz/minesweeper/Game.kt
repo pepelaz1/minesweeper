@@ -152,6 +152,9 @@ class Game {
             if (blocks[i + 1][j + 1].state == BlockState.Unclicked)
                 calcBombsAround(i + 1, j + 1)
         }
+    }
+
+    fun onSmileyClick() {
 
     }
 }

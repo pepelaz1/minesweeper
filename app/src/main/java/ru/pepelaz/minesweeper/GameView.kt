@@ -8,8 +8,8 @@ import android.widget.Toast
 import java.lang.System.currentTimeMillis
 import java.util.ArrayList
 import android.R.attr.name
-
-
+import android.support.v4.content.ContextCompat
+import ru.pepelaz.minesweeper.R.style.AppTheme
 
 
 /**
@@ -24,12 +24,17 @@ class GameView(context: Context) : View(context) {
     val bmpUnclicked: Bitmap
     val bmpFlag: Bitmap
     val bmpBomb: Bitmap
+    val bmpSmiley: Bitmap
     val bmpNumbers = ArrayList<Bitmap>()
     var dx: Float = 0f
     var dy: Float  = 0f
-    val blockWidth = 120
-    var blockHeight = 120
+    var blockWidth = 0
+    var blockHeight = 0
+    var smileyHegiht = 0
+    var smileyWidth = 0
+    var smileyRect = Rect()
     var lastTime: Long = 0
+    var headerHeight: Int = 0
 
     var game: Game? = null
 
@@ -48,6 +53,7 @@ class GameView(context: Context) : View(context) {
         bmpClicked = BitmapFactory.decodeResource(resources, R.drawable.block_clicked)
         bmpFlag = BitmapFactory.decodeResource(resources, R.drawable.flag)
         bmpBomb = BitmapFactory.decodeResource(resources, R.drawable.bomb)
+        bmpSmiley = BitmapFactory.decodeResource(resources, R.drawable.smiley)
 
         for (n in 1..8) {
             val resId = resources.getIdentifier("n" + n.toString(), "drawable", context.packageName)
@@ -57,27 +63,48 @@ class GameView(context: Context) : View(context) {
 
     override fun draw(canvas: Canvas?) {
         super.draw(canvas)
-        //canvas?.drawColor(Color.GRAY)
+        canvas?.drawColor(ContextCompat.getColor(context, R.color.background))
         //canvas?.drawCircle(circleX ?: 0f, circleY ?: 0f, 50f, paint)
 
         val canvasWidth = canvas?.width?:0;
         val canvasHeight = canvas?.height?:0;
 
+        val anchorSide = if (canvasWidth < canvasHeight) canvasWidth else canvasHeight
+        headerHeight = ((anchorSide / 100f) * 15).toInt()
+        blockWidth = anchorSide / 8
+        blockHeight = blockWidth
+
+        smileyHegiht = headerHeight - 4
+        smileyWidth = smileyHegiht
+        smileyRect = Rect(canvasWidth/2 - smileyWidth/2, 2, canvasWidth/2 + smileyWidth/2, smileyHegiht)
+
+
         if (game == null) {
 
-
-
             val cntX = canvasWidth / blockWidth
-            val cntY = canvasHeight / blockHeight
+            val cntY = (canvasHeight - headerHeight) / blockHeight
             game = Game(cntX, cntY)
 
             val actualWidth = cntX * blockWidth
             val actualHeight = cntY * blockHeight
 
             dx = canvasWidth.toFloat() / actualWidth
-            dy = canvasHeight.toFloat() / actualHeight
+            dy = (canvasHeight - headerHeight).toFloat() / actualHeight
         }
 
+        drawHeader(canvas, canvasWidth)
+        drawBlocks(canvas)
+
+    }
+
+    fun drawHeader(canvas: Canvas?, canvasWidth: Int) {
+
+        val srcRect = Rect(0, 0, bmpSmiley.width, bmpSmiley.height)
+        val dstRect = Rect(smileyRect)
+        canvas?.drawBitmap(bmpSmiley, srcRect, dstRect, paint)
+    }
+
+    fun drawBlocks(canvas: Canvas?) {
         val game = game?:return
 
         val srcRect = Rect(0, 0, bmpUnclicked.width, bmpUnclicked.height)
@@ -85,9 +112,9 @@ class GameView(context: Context) : View(context) {
             for(j in 0..game.countY - 1) {
 
                 val x1 = (i * blockWidth * dx).toInt()
-                val y1 = (j * blockHeight * dy).toInt()
+                val y1 = headerHeight +  (j * blockHeight * dy).toInt()
                 val x2 = ((i+1) * blockWidth * dx).toInt()
-                val y2 = ((j+1) *  blockHeight * dy).toInt()
+                val y2 = headerHeight + ((j+1) *  blockHeight * dy).toInt()
 
                 val dstRect = Rect(x1, y1, x2, y2)
                 when(game.blockState(i,j)) {
@@ -115,10 +142,12 @@ class GameView(context: Context) : View(context) {
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         //circleX = event?.x
         //circleY = event?.y
-        val game = game?:return true
+        val game2 = game?:return true
 
-        val i: Int = ( (event?.x?:0f) / (blockWidth * dx)).toInt()
-        val j: Int = ( (event?.y?:0f) / (blockHeight * dy)).toInt()
+        val smileyClicked = smileyRect.contains((event?.x?:0f).toInt(), (event?.y?:0f).toInt())
+
+        val i: Int = ((event?.x?:0f) / (blockWidth * dx)).toInt()
+        val j: Int = (((event?.y?:0f) - headerHeight) / (blockHeight * dy)).toInt()
 
         when(event?.action) {
             MotionEvent.ACTION_DOWN -> {
@@ -127,10 +156,16 @@ class GameView(context: Context) : View(context) {
             MotionEvent.ACTION_UP -> {
 
                 if (currentTimeMillis() - lastTime < 300) {
-                    game.onShortClick(i, j)
+                    if (!smileyClicked)
+                        game2.onShortClick(i, j)
+                    else {
+                        //game.onSmileyClick()
+                        game = null
+                    }
                     invalidate()
                 } else {
-                    game.onLongClick(i, j)
+                    if (!smileyClicked)
+                      game2.onLongClick(i, j)
                     invalidate()
                 }
             }
