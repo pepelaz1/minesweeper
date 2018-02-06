@@ -15,7 +15,6 @@ enum class BlockState(val state: Int) {
     Seven(7),
     Eight(8),
     Unclicked(10),
-    Flag(11),
-    Bomb(12),
-    BombClicked(13)
+    Bomb(11),
+    BombClicked(12)
 }

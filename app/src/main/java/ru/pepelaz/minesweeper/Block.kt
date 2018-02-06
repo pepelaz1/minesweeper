@@ -6,6 +6,7 @@ package ru.pepelaz.minesweeper
 class Block {
 
     var state: BlockState = BlockState.Unclicked
+    var flag = false
     init {
 
     }

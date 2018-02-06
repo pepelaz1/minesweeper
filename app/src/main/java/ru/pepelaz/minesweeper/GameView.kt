@@ -6,10 +6,16 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.Toast
 import java.lang.System.currentTimeMillis
-import java.util.ArrayList
 import android.R.attr.name
+import android.content.Context.VIBRATOR_SERVICE
+import android.os.Handler
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.support.v4.content.ContextCompat
+import android.util.Log
 import ru.pepelaz.minesweeper.R.style.AppTheme
+import java.util.*
+import kotlin.concurrent.schedule
 
 
 /**
@@ -22,11 +28,13 @@ class GameView(context: Context) : View(context) {
     val bmpUnclicked: Bitmap
     val bmpFlag: Bitmap
     val bmpBomb: Bitmap
+    val bmpBombClicked: Bitmap
     val bmpSmiley: Bitmap
     val bmpSmileyClicked: Bitmap
     val bmpSmileyWin: Bitmap
     val bmpSmileyLose: Bitmap
     val bmpNumbers = ArrayList<Bitmap>()
+    val longClickDuration = 300
     var dx: Float = 0f
     var dy: Float  = 0f
     var blockWidth = 0
@@ -39,6 +47,8 @@ class GameView(context: Context) : View(context) {
 
     var smileyState = SmileyState.Unclicked
     var game: Game? = null
+    var timer: Timer? = null
+
 
     init {
 
@@ -52,6 +62,7 @@ class GameView(context: Context) : View(context) {
         bmpClicked = BitmapFactory.decodeResource(resources, R.drawable.block_clicked)
         bmpFlag = BitmapFactory.decodeResource(resources, R.drawable.flag)
         bmpBomb = BitmapFactory.decodeResource(resources, R.drawable.bomb)
+        bmpBombClicked = BitmapFactory.decodeResource(resources, R.drawable.bomb_clicked)
         bmpSmiley = BitmapFactory.decodeResource(resources, R.drawable.smiley)
         bmpSmileyClicked = BitmapFactory.decodeResource(resources, R.drawable.smiley_o)
         bmpSmileyWin = BitmapFactory.decodeResource(resources, R.drawable.smiley_win)
@@ -131,21 +142,25 @@ class GameView(context: Context) : View(context) {
 
                 val dstRect = Rect(x1, y1, x2, y2)
                 when(game.blockState(i,j)) {
-                    BlockState.Flag -> {
-                        canvas?.drawBitmap(bmpFlag, srcRect, dstRect, paint)
-                    }
                     BlockState.Bomb -> {
-                        canvas?.drawBitmap(bmpBomb, srcRect, dstRect, paint)
+                       // canvas?.drawBitmap(if (game.state == GameState.Lose) bmpBomb else bmpUnclicked, srcRect, dstRect, paint)
+                        canvas?.drawBitmap(bmpBomb , srcRect, dstRect, paint)
+                    }
+                    BlockState.BombClicked -> {
+                        canvas?.drawBitmap(bmpBombClicked, srcRect, dstRect, paint)
                     }
                     BlockState.Unclicked -> {
-                        canvas?.drawBitmap(bmpUnclicked, srcRect, dstRect, paint)
+                        if (game.hasFlag(i,j)) {
+                            canvas?.drawBitmap(bmpFlag, srcRect, dstRect, paint)
+                        } else {
+                            canvas?.drawBitmap(bmpUnclicked, srcRect, dstRect, paint)
+                        }
                     }
                     BlockState.Clicked -> {
                         canvas?.drawBitmap(bmpClicked, srcRect, dstRect, paint)
                     }
                     else -> {
-
-                        canvas?.drawBitmap(bmpNumbers[game.blockState(i,j).state - 1], srcRect, dstRect, paint)
+                        canvas?.drawBitmap(bmpNumbers[game.blockState(i, j).state - 1], srcRect, dstRect, paint)
                     }
                 }
             }
@@ -160,6 +175,7 @@ class GameView(context: Context) : View(context) {
         val i: Int = ((event?.x ?: 0f) / (blockWidth * dx)).toInt()
         val j: Int = (((event?.y ?: 0f) - headerHeight) / (blockHeight * dy)).toInt()
 
+
         when (event?.action) {
             MotionEvent.ACTION_DOWN -> {
                 lastTime = currentTimeMillis()
@@ -168,8 +184,19 @@ class GameView(context: Context) : View(context) {
                     smileyState = SmileyState.Clicked
                     invalidate()
                 }
+
+                timer = Timer("vibrator", true)
+                timer!!.schedule(300) {
+                    val v: Vibrator = context.getSystemService(VIBRATOR_SERVICE) as Vibrator
+                    v.vibrate(100)
+                }
             }
             MotionEvent.ACTION_UP -> {
+
+                if (timer != null) {
+                    timer!!.cancel()
+                    timer = null
+                }
 
                 if (smileyClicked) {
                     smileyState = SmileyState.Unclicked
@@ -177,22 +204,19 @@ class GameView(context: Context) : View(context) {
                     invalidate();
                 } else {
                     if (gameSafe.state == GameState.Continue) {
-                        if (currentTimeMillis() - lastTime < 300) {
+                        if (currentTimeMillis() - lastTime < longClickDuration) {
                             gameSafe.onShortClick(i, j)
                             when (gameSafe.state) {
                                 GameState.Win -> {
-
+                                    smileyState = SmileyState.Win
                                 }
                                 GameState.Lose -> {
                                     smileyState = SmileyState.Lose
                                 }
-                                else -> {
-
-                                }
+                                else -> {  }
                             }
                         } else {
                             gameSafe.onLongClick(i, j)
-
                         }
                         invalidate()
                     }

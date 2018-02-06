@@ -1,5 +1,6 @@
 package ru.pepelaz.minesweeper
 
+import android.util.Log
 import java.util.*
 
 
@@ -14,6 +15,7 @@ class Game {
     private val blocks: ArrayList<ArrayList<Block>> = ArrayList()
 
     private var bombsCount: Int = 0
+    private var blockRemained: Int = 0
 
     constructor(countX: Int, countY: Int) {
         this.state = GameState.Continue
@@ -27,6 +29,7 @@ class Game {
             }
             blocks.add(row)
         }
+        blockRemained = countX * countY
         generateBombs()
     }
 
@@ -43,6 +46,7 @@ class Game {
                 val j = random.nextInt(countY)
                 if (blocks[i][j].state != BlockState.Bomb) {
                     blocks[i][j].state = BlockState.Bomb
+                    blockRemained--
                     break
                 }
             }
@@ -53,24 +57,34 @@ class Game {
         return  blocks[i][j].state
     }
 
+    fun hasFlag(i: Int, j: Int): Boolean {
+        return blocks[i][j].flag
+    }
+
     fun onShortClick(i: Int, j :Int)  {
         if (blocks[i][j].state == BlockState.Bomb) {
+            blocks[i][j].state = BlockState.BombClicked
             state = GameState.Lose
             return
         }
+
         calcBombsAround(i, j)
+
+        if (blockRemained == 0)
+            state = GameState.Win
     }
 
     fun onLongClick(i: Int, j :Int) {
         val state =  blocks[i][j].state
-        if (state == BlockState.Unclicked) {
-            blocks[i][j].state = BlockState.Flag
-        } else {
-            blocks[i][j].state = BlockState.Unclicked
-        }
+        blocks[i][j].flag = if (state == BlockState.Unclicked) true else false
     }
 
     fun calcBombsAround(i: Int, j :Int) {
+
+        if (blocks[i][j].state == BlockState.Unclicked)
+          blockRemained--
+
+        //Log.d("test_test","blocks remained: " + blockRemained)
         var cnt = 0
         if ((i - 1 >= 0) && (j - 1 >= 0)) {
             if (blocks[i - 1][j - 1].state == BlockState.Bomb)
@@ -116,51 +130,50 @@ class Game {
         blocks[i][j].state = BlockState.values()[cnt]
         if (cnt == 0)
             exploreFreeSpace(i, j)
+
     }
 
     fun exploreFreeSpace(i: Int, j: Int) {
         if ((i - 1 >= 0) && (j - 1 >= 0)) {
-            if (blocks[i-1][j-1].state == BlockState.Unclicked)
+            if (blocks[i-1][j-1].state == BlockState.Unclicked && !blocks[i-1][j-1].flag)
                 calcBombsAround(i - 1, j - 1)
         }
 
         if (i - 1 >= 0 ) {
-            if (blocks[i-1][j].state == BlockState.Unclicked)
+            if (blocks[i-1][j].state == BlockState.Unclicked && !blocks[i-1][j].flag)
                 calcBombsAround(i - 1, j)
         }
 
         if (i - 1 >= 0 && (j + 1 <= countY - 1)) {
-            if (blocks[i-1][j+1].state == BlockState.Unclicked)
+            if (blocks[i-1][j+1].state == BlockState.Unclicked && !blocks[i-1][j+1].flag)
                 calcBombsAround(i - 1, j + 1)
         }
 
         if (j - 1 >= 0) {
-            if (blocks[i][j-1].state == BlockState.Unclicked)
+            if (blocks[i][j-1].state == BlockState.Unclicked && !blocks[i][j-1].flag)
                 calcBombsAround(i, j - 1)
         }
 
         if (j + 1 <= countY - 1) {
-            if (blocks[i][j+1].state == BlockState.Unclicked)
+            if (blocks[i][j+1].state == BlockState.Unclicked && !blocks[i][j+1].flag)
                 calcBombsAround(i, j + 1)
         }
 
         if ((i + 1 <= countX - 1) && (j - 1 >= 0)) {
-            if (blocks[i + 1][j - 1].state == BlockState.Unclicked)
+            if (blocks[i + 1][j - 1].state == BlockState.Unclicked && !blocks[i + 1][j - 1].flag)
                 calcBombsAround(i + 1, j - 1)
         }
 
         if (i + 1 <= countX - 1 ) {
-            if (blocks[i + 1][j].state == BlockState.Unclicked)
+            if (blocks[i + 1][j].state == BlockState.Unclicked && !blocks[i + 1][j].flag)
                 calcBombsAround(i + 1, j )
         }
 
         if ((i + 1 <= countX - 1) && (j + 1 <= countY - 1)) {
-            if (blocks[i + 1][j + 1].state == BlockState.Unclicked)
+            if (blocks[i + 1][j + 1].state == BlockState.Unclicked && !blocks[i + 1][j + 1].flag)
                 calcBombsAround(i + 1, j + 1)
         }
     }
 
-    fun onSmileyClick() {
 
-    }
 }
