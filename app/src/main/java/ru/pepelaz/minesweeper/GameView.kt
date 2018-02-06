@@ -25,6 +25,7 @@ class GameView(context: Context) : View(context) {
     val bmpFlag: Bitmap
     val bmpBomb: Bitmap
     val bmpSmiley: Bitmap
+    val bmpSmileyClicked: Bitmap
     val bmpNumbers = ArrayList<Bitmap>()
     var dx: Float = 0f
     var dy: Float  = 0f
@@ -36,6 +37,7 @@ class GameView(context: Context) : View(context) {
     var lastTime: Long = 0
     var headerHeight: Int = 0
 
+    var smileyState = SmileyState.Unclicked
     var game: Game? = null
 
     init {
@@ -54,6 +56,7 @@ class GameView(context: Context) : View(context) {
         bmpFlag = BitmapFactory.decodeResource(resources, R.drawable.flag)
         bmpBomb = BitmapFactory.decodeResource(resources, R.drawable.bomb)
         bmpSmiley = BitmapFactory.decodeResource(resources, R.drawable.smiley)
+        bmpSmileyClicked = BitmapFactory.decodeResource(resources, R.drawable.smiley_o)
 
         for (n in 1..8) {
             val resId = resources.getIdentifier("n" + n.toString(), "drawable", context.packageName)
@@ -92,16 +95,24 @@ class GameView(context: Context) : View(context) {
             dy = (canvasHeight - headerHeight).toFloat() / actualHeight
         }
 
-        drawHeader(canvas, canvasWidth)
+        drawHeader(canvas)
         drawBlocks(canvas)
 
     }
 
-    fun drawHeader(canvas: Canvas?, canvasWidth: Int) {
+    fun drawHeader(canvas: Canvas?) {
 
         val srcRect = Rect(0, 0, bmpSmiley.width, bmpSmiley.height)
         val dstRect = Rect(smileyRect)
-        canvas?.drawBitmap(bmpSmiley, srcRect, dstRect, paint)
+        when (smileyState) {
+            SmileyState.Clicked -> {
+                canvas?.drawBitmap(bmpSmileyClicked, srcRect, dstRect, paint)
+            }
+            else -> {
+                canvas?.drawBitmap(bmpSmiley, srcRect, dstRect, paint)
+            }
+        }
+
     }
 
     fun drawBlocks(canvas: Canvas?) {
@@ -152,20 +163,25 @@ class GameView(context: Context) : View(context) {
         when(event?.action) {
             MotionEvent.ACTION_DOWN -> {
                 lastTime = currentTimeMillis()
+
+                if (smileyClicked) {
+                    smileyState = SmileyState.Clicked
+                    invalidate()
+                }
             }
             MotionEvent.ACTION_UP -> {
 
-                if (currentTimeMillis() - lastTime < 300) {
-                    if (!smileyClicked)
-                        game2.onShortClick(i, j)
-                    else {
-                        //game.onSmileyClick()
-                        game = null
-                    }
-                    invalidate()
+                if (smileyClicked) {
+                    smileyState = SmileyState.Unclicked
+                    game = null
+                    invalidate();
                 } else {
-                    if (!smileyClicked)
-                      game2.onLongClick(i, j)
+                    if (currentTimeMillis() - lastTime < 300) {
+                        game2.onShortClick(i, j)
+                    } else {
+                        game2.onLongClick(i, j)
+
+                    }
                     invalidate()
                 }
             }
