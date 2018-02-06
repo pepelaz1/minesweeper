@@ -8,6 +8,7 @@ import java.util.*
  */
 class Game {
 
+    var state: GameState private set
     var countX: Int private set
     var countY: Int private set
     private val blocks: ArrayList<ArrayList<Block>> = ArrayList()
@@ -15,6 +16,7 @@ class Game {
     private var bombsCount: Int = 0
 
     constructor(countX: Int, countY: Int) {
+        this.state = GameState.Continue
         this.countX = countX
         this.countY = countY
         for (i in 0..countX - 1) {
@@ -51,7 +53,11 @@ class Game {
         return  blocks[i][j].state
     }
 
-    fun onShortClick(i: Int, j :Int) {
+    fun onShortClick(i: Int, j :Int)  {
+        if (blocks[i][j].state == BlockState.Bomb) {
+            state = GameState.Lose
+            return
+        }
         calcBombsAround(i, j)
     }
 

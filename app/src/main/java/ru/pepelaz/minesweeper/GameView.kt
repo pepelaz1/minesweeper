@@ -18,14 +18,14 @@ import ru.pepelaz.minesweeper.R.style.AppTheme
 class GameView(context: Context) : View(context) {
 
     val paint: Paint
-    //var circleX: Float?
-    //var circleY: Float?
     val bmpClicked: Bitmap
     val bmpUnclicked: Bitmap
     val bmpFlag: Bitmap
     val bmpBomb: Bitmap
     val bmpSmiley: Bitmap
     val bmpSmileyClicked: Bitmap
+    val bmpSmileyWin: Bitmap
+    val bmpSmileyLose: Bitmap
     val bmpNumbers = ArrayList<Bitmap>()
     var dx: Float = 0f
     var dy: Float  = 0f
@@ -48,15 +48,14 @@ class GameView(context: Context) : View(context) {
         paint.color = Color.YELLOW
 
 
-        //circleX = 100f
-       //circleY = 100f
-
         bmpUnclicked = BitmapFactory.decodeResource(resources, R.drawable.block_unclicked)
         bmpClicked = BitmapFactory.decodeResource(resources, R.drawable.block_clicked)
         bmpFlag = BitmapFactory.decodeResource(resources, R.drawable.flag)
         bmpBomb = BitmapFactory.decodeResource(resources, R.drawable.bomb)
         bmpSmiley = BitmapFactory.decodeResource(resources, R.drawable.smiley)
         bmpSmileyClicked = BitmapFactory.decodeResource(resources, R.drawable.smiley_o)
+        bmpSmileyWin = BitmapFactory.decodeResource(resources, R.drawable.smiley_win)
+        bmpSmileyLose = BitmapFactory.decodeResource(resources, R.drawable.smiley_lose)
 
         for (n in 1..8) {
             val resId = resources.getIdentifier("n" + n.toString(), "drawable", context.packageName)
@@ -67,7 +66,6 @@ class GameView(context: Context) : View(context) {
     override fun draw(canvas: Canvas?) {
         super.draw(canvas)
         canvas?.drawColor(ContextCompat.getColor(context, R.color.background))
-        //canvas?.drawCircle(circleX ?: 0f, circleY ?: 0f, 50f, paint)
 
         val canvasWidth = canvas?.width?:0;
         val canvasHeight = canvas?.height?:0;
@@ -97,7 +95,6 @@ class GameView(context: Context) : View(context) {
 
         drawHeader(canvas)
         drawBlocks(canvas)
-
     }
 
     fun drawHeader(canvas: Canvas?) {
@@ -108,11 +105,16 @@ class GameView(context: Context) : View(context) {
             SmileyState.Clicked -> {
                 canvas?.drawBitmap(bmpSmileyClicked, srcRect, dstRect, paint)
             }
+            SmileyState.Win -> {
+                canvas?.drawBitmap(bmpSmileyWin, srcRect, dstRect, paint)
+            }
+            SmileyState.Lose -> {
+                canvas?.drawBitmap(bmpSmileyLose, srcRect, dstRect, paint)
+            }
             else -> {
                 canvas?.drawBitmap(bmpSmiley, srcRect, dstRect, paint)
             }
         }
-
     }
 
     fun drawBlocks(canvas: Canvas?) {
@@ -151,16 +153,14 @@ class GameView(context: Context) : View(context) {
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
-        //circleX = event?.x
-        //circleY = event?.y
-        val game2 = game?:return true
+        val gameSafe = game ?: return true
 
-        val smileyClicked = smileyRect.contains((event?.x?:0f).toInt(), (event?.y?:0f).toInt())
+        val smileyClicked = smileyRect.contains((event?.x ?: 0f).toInt(), (event?.y ?: 0f).toInt())
 
-        val i: Int = ((event?.x?:0f) / (blockWidth * dx)).toInt()
-        val j: Int = (((event?.y?:0f) - headerHeight) / (blockHeight * dy)).toInt()
+        val i: Int = ((event?.x ?: 0f) / (blockWidth * dx)).toInt()
+        val j: Int = (((event?.y ?: 0f) - headerHeight) / (blockHeight * dy)).toInt()
 
-        when(event?.action) {
+        when (event?.action) {
             MotionEvent.ACTION_DOWN -> {
                 lastTime = currentTimeMillis()
 
@@ -176,13 +176,26 @@ class GameView(context: Context) : View(context) {
                     game = null
                     invalidate();
                 } else {
-                    if (currentTimeMillis() - lastTime < 300) {
-                        game2.onShortClick(i, j)
-                    } else {
-                        game2.onLongClick(i, j)
+                    if (gameSafe.state == GameState.Continue) {
+                        if (currentTimeMillis() - lastTime < 300) {
+                            gameSafe.onShortClick(i, j)
+                            when (gameSafe.state) {
+                                GameState.Win -> {
 
+                                }
+                                GameState.Lose -> {
+                                    smileyState = SmileyState.Lose
+                                }
+                                else -> {
+
+                                }
+                            }
+                        } else {
+                            gameSafe.onLongClick(i, j)
+
+                        }
+                        invalidate()
                     }
-                    invalidate()
                 }
             }
         }

@@ -6,5 +6,7 @@ package ru.pepelaz.minesweeper
 
 enum class SmileyState(val state: Int) {
     Unclicked(0),
-    Clicked(1)
+    Clicked(1),
+    Win(2),
+    Lose(3)
 }
