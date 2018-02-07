@@ -14,13 +14,16 @@ class Game {
     var countY: Int private set
     private val blocks: ArrayList<ArrayList<Block>> = ArrayList()
 
+    var flagsRemained: Int private set
     private var bombsCount: Int = 0
     private var blockRemained: Int = 0
+
 
     constructor(countX: Int, countY: Int) {
         this.state = GameState.Continue
         this.countX = countX
         this.countY = countY
+        flagsRemained = 0
         for (i in 0..countX - 1) {
             val row: ArrayList<Block> = ArrayList()
             for(j in 0..countY - 1) {
@@ -30,6 +33,7 @@ class Game {
             blocks.add(row)
         }
         blockRemained = countX * countY
+
         generateBombs()
     }
 
@@ -39,6 +43,7 @@ class Game {
 
     private fun generateBombs() {
         bombsCount = ((countX * countY) / 100f * 20f).toInt()
+        flagsRemained = bombsCount
         val random = Random()
         for(n in 0..bombsCount - 1) {
             while(true){
@@ -76,7 +81,8 @@ class Game {
 
     fun onLongClick(i: Int, j :Int) {
         val state =  blocks[i][j].state
-        blocks[i][j].flag = if (state == BlockState.Unclicked) true else false
+        blocks[i][j].flag = if (state == BlockState.Unclicked || state == BlockState.Bomb) true else false
+        flagsRemained--
     }
 
     fun calcBombsAround(i: Int, j :Int) {

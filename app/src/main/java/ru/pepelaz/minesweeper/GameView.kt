@@ -34,6 +34,7 @@ class GameView(context: Context) : View(context) {
     val bmpSmileyWin: Bitmap
     val bmpSmileyLose: Bitmap
     val bmpNumbers = ArrayList<Bitmap>()
+    val bmpHeaders = ArrayList<Bitmap>()
     val longClickDuration = 300
     var dx: Float = 0f
     var dy: Float  = 0f
@@ -42,6 +43,9 @@ class GameView(context: Context) : View(context) {
     var smileyHegiht = 0
     var smileyWidth = 0
     var smileyRect = Rect()
+    var remainedWidth = 0
+    var remainedHeight = 0
+    var remainedRect = Rect()
     var lastTime: Long = 0
     var headerHeight: Int = 0
 
@@ -55,7 +59,8 @@ class GameView(context: Context) : View(context) {
         paint = Paint()
         paint.isFilterBitmap = true
         paint.isAntiAlias = true
-        paint.color = Color.YELLOW
+        paint.color = Color.RED
+        paint.typeface = Typeface.create(Typeface.SERIF,Typeface.NORMAL)
 
 
         bmpUnclicked = BitmapFactory.decodeResource(resources, R.drawable.block_unclicked)
@@ -71,6 +76,11 @@ class GameView(context: Context) : View(context) {
         for (n in 1..8) {
             val resId = resources.getIdentifier("n" + n.toString(), "drawable", context.packageName)
             bmpNumbers.add(BitmapFactory.decodeResource(resources, resId))
+        }
+
+        for (n in 0..9) {
+            val resId = resources.getIdentifier("h" + n.toString(), "drawable", context.packageName)
+            bmpHeaders.add(BitmapFactory.decodeResource(resources, resId))
         }
     }
 
@@ -90,6 +100,11 @@ class GameView(context: Context) : View(context) {
         smileyWidth = smileyHegiht
         smileyRect = Rect(canvasWidth/2 - smileyWidth/2, 2, canvasWidth/2 + smileyWidth/2, smileyHegiht)
 
+
+        val widthLeft = canvasWidth/2 - smileyWidth/2
+        remainedWidth = (smileyWidth * 2.5).toInt()
+        remainedHeight = headerHeight - 16
+        remainedRect = Rect(widthLeft / 2 - remainedWidth / 2 , 8, widthLeft / 2  + remainedWidth / 2, remainedHeight)
 
         if (game == null) {
 
@@ -126,6 +141,28 @@ class GameView(context: Context) : View(context) {
                 canvas?.drawBitmap(bmpSmiley, srcRect, dstRect, paint)
             }
         }
+
+        drawRemained(canvas)
+
+    }
+
+
+    fun drawRemained(canvas: Canvas?) {
+        val game = game?:return
+        val srcRect = Rect(0, 0, bmpHeaders[0].width, bmpHeaders[0].height)
+        val squezee = 0.7
+        val flags = "%03d".format(game.flagsRemained)
+
+        var top = remainedRect.top
+        val width = (remainedWidth * squezee ).toInt()
+        var left = remainedRect.left + (remainedWidth - width) / 2
+
+        for (i in 0..flags.length - 1) {
+            val dstRect = Rect(left, top, left + width / 3, top + remainedHeight)
+            val n: Int = flags[i].toString().toInt()
+            canvas?.drawBitmap(bmpHeaders[n], srcRect, dstRect, paint)
+            left += width / 3
+        }
     }
 
     fun drawBlocks(canvas: Canvas?) {
@@ -143,8 +180,15 @@ class GameView(context: Context) : View(context) {
                 val dstRect = Rect(x1, y1, x2, y2)
                 when(game.blockState(i,j)) {
                     BlockState.Bomb -> {
-                       // canvas?.drawBitmap(if (game.state == GameState.Lose) bmpBomb else bmpUnclicked, srcRect, dstRect, paint)
-                        canvas?.drawBitmap(bmpBomb , srcRect, dstRect, paint)
+                        if (game.state == GameState.Lose) {
+                            canvas?.drawBitmap(bmpBomb , srcRect, dstRect, paint)
+                        } else {
+                            if (game.hasFlag(i,j)) {
+                                canvas?.drawBitmap(bmpFlag, srcRect, dstRect, paint)
+                            } else {
+                                canvas?.drawBitmap(bmpUnclicked, srcRect, dstRect, paint)
+                            }
+                        }
                     }
                     BlockState.BombClicked -> {
                         canvas?.drawBitmap(bmpBombClicked, srcRect, dstRect, paint)
