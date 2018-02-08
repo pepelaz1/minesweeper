@@ -4,16 +4,13 @@ import android.content.Context
 import android.graphics.*
 import android.view.MotionEvent
 import android.view.View
-import android.widget.Toast
 import java.lang.System.currentTimeMillis
-import android.R.attr.name
 import android.content.Context.VIBRATOR_SERVICE
 import android.os.Handler
-import android.os.VibrationEffect
 import android.os.Vibrator
 import android.support.v4.content.ContextCompat
+import android.support.v7.app.WindowDecorActionBar
 import android.util.Log
-import ru.pepelaz.minesweeper.R.style.AppTheme
 import java.util.*
 import kotlin.concurrent.schedule
 
@@ -29,12 +26,14 @@ class GameView(context: Context) : View(context) {
     val bmpFlag: Bitmap
     val bmpBomb: Bitmap
     val bmpBombClicked: Bitmap
+    val bmpBombWrong: Bitmap
     val bmpSmiley: Bitmap
     val bmpSmileyClicked: Bitmap
     val bmpSmileyWin: Bitmap
     val bmpSmileyLose: Bitmap
     val bmpNumbers = ArrayList<Bitmap>()
     val bmpHeaders = ArrayList<Bitmap>()
+    val bmpColon: Bitmap
     val longClickDuration = 300
     var dx: Float = 0f
     var dy: Float  = 0f
@@ -46,12 +45,19 @@ class GameView(context: Context) : View(context) {
     var remainedWidth = 0
     var remainedHeight = 0
     var remainedRect = Rect()
+    var timerWidth = 0
+    var timerHeight = 0
+    var timerRect = Rect()
     var lastTime: Long = 0
     var headerHeight: Int = 0
 
     var smileyState = SmileyState.Unclicked
     var game: Game? = null
-    var timer: Timer? = null
+    var vibrateTimer: Timer? = null
+    var gameTimer: Timer? = null
+    var firstClick: Boolean = false
+    var time = "00:00"
+    var timerTime: Long = 0
 
 
     init {
@@ -68,10 +74,12 @@ class GameView(context: Context) : View(context) {
         bmpFlag = BitmapFactory.decodeResource(resources, R.drawable.flag)
         bmpBomb = BitmapFactory.decodeResource(resources, R.drawable.bomb)
         bmpBombClicked = BitmapFactory.decodeResource(resources, R.drawable.bomb_clicked)
+        bmpBombWrong = BitmapFactory.decodeResource(resources, R.drawable.bomb_wrong)
         bmpSmiley = BitmapFactory.decodeResource(resources, R.drawable.smiley)
         bmpSmileyClicked = BitmapFactory.decodeResource(resources, R.drawable.smiley_o)
         bmpSmileyWin = BitmapFactory.decodeResource(resources, R.drawable.smiley_win)
         bmpSmileyLose = BitmapFactory.decodeResource(resources, R.drawable.smiley_lose)
+        bmpColon = BitmapFactory.decodeResource(resources, R.drawable.colon)
 
         for (n in 1..8) {
             val resId = resources.getIdentifier("n" + n.toString(), "drawable", context.packageName)
@@ -88,6 +96,20 @@ class GameView(context: Context) : View(context) {
         super.draw(canvas)
         canvas?.drawColor(ContextCompat.getColor(context, R.color.background))
 
+
+        if (game == null) {
+            initGame(canvas)
+         }
+
+        drawHeader(canvas)
+        drawBlocks(canvas)
+    }
+
+
+    fun initGame(canvas: Canvas?) {
+        firstClick = true
+        time = "00:00"
+
         val canvasWidth = canvas?.width?:0;
         val canvasHeight = canvas?.height?:0;
 
@@ -101,26 +123,26 @@ class GameView(context: Context) : View(context) {
         smileyRect = Rect(canvasWidth/2 - smileyWidth/2, 2, canvasWidth/2 + smileyWidth/2, smileyHegiht)
 
 
-        val widthLeft = canvasWidth/2 - smileyWidth/2
+        val halfWidth = canvasWidth/2 - smileyWidth/2
         remainedWidth = (smileyWidth * 2.5).toInt()
         remainedHeight = headerHeight - 16
-        remainedRect = Rect(widthLeft / 2 - remainedWidth / 2 , 8, widthLeft / 2  + remainedWidth / 2, remainedHeight)
+        remainedRect = Rect(halfWidth / 2 - remainedWidth / 2 , 8, halfWidth / 2  + remainedWidth / 2, remainedHeight)
 
-        if (game == null) {
+        timerWidth = (smileyWidth * 3.5).toInt()
+        timerHeight = headerHeight - 16
+        timerRect = Rect(canvasWidth / 2 + smileyWidth/2 + halfWidth/2 - timerWidth/2 , 8,
+                canvasWidth / 2 + + smileyWidth/2  + halfWidth / 2  + timerWidth / 2, timerHeight)
 
-            val cntX = canvasWidth / blockWidth
-            val cntY = (canvasHeight - headerHeight) / blockHeight
-            game = Game(cntX, cntY)
 
-            val actualWidth = cntX * blockWidth
-            val actualHeight = cntY * blockHeight
+        val cntX = canvasWidth / blockWidth
+        val cntY = (canvasHeight - headerHeight) / blockHeight
+        game = Game(cntX, cntY)
 
-            dx = canvasWidth.toFloat() / actualWidth
-            dy = (canvasHeight - headerHeight).toFloat() / actualHeight
-        }
+        val actualWidth = cntX * blockWidth
+        val actualHeight = cntY * blockHeight
 
-        drawHeader(canvas)
-        drawBlocks(canvas)
+        dx = canvasWidth.toFloat() / actualWidth
+        dy = (canvasHeight - headerHeight).toFloat() / actualHeight
     }
 
     fun drawHeader(canvas: Canvas?) {
@@ -141,9 +163,8 @@ class GameView(context: Context) : View(context) {
                 canvas?.drawBitmap(bmpSmiley, srcRect, dstRect, paint)
             }
         }
-
         drawRemained(canvas)
-
+        drawTimer(canvas)
     }
 
 
@@ -165,6 +186,36 @@ class GameView(context: Context) : View(context) {
         }
     }
 
+    fun drawTimer(canvas: Canvas?) {
+        var srcRect: Rect
+        var dstRect: Rect
+        val squezee = 0.7
+
+        var top = timerRect.top
+        val width = (timerWidth * squezee ).toInt()
+        var left = timerRect.left + (timerWidth - width) / 2
+
+       // val time = "00:00"
+
+        for (i in 0..time.length - 1) {
+
+            if (time[i].toString() == ":") {
+                val w = bmpHeaders[0].width / 3
+                srcRect = Rect(w, 0, bmpHeaders[0].width - w, bmpHeaders[0].height)
+                dstRect = Rect(left, top, left + width / 10, top + timerHeight)
+                canvas?.drawBitmap(bmpColon, srcRect, dstRect, paint)
+                left += width / 10
+            } else {
+                srcRect = Rect(0, 0, bmpHeaders[0].width, bmpHeaders[0].height)
+                dstRect = Rect(left, top, left + 9 *width / 40, top + timerHeight)
+                val n: Int = time[i].toString().toInt()
+                canvas?.drawBitmap(bmpHeaders[n], srcRect, dstRect, paint)
+                left += (9 * width / 40)
+            }
+
+        }
+    }
+
     fun drawBlocks(canvas: Canvas?) {
         val game = game?:return
 
@@ -180,25 +231,19 @@ class GameView(context: Context) : View(context) {
                 val dstRect = Rect(x1, y1, x2, y2)
                 when(game.blockState(i,j)) {
                     BlockState.Bomb -> {
-                        if (game.state == GameState.Lose) {
+                        if (game.state == GameState.Lose)
                             canvas?.drawBitmap(bmpBomb , srcRect, dstRect, paint)
-                        } else {
-                            if (game.hasFlag(i,j)) {
-                                canvas?.drawBitmap(bmpFlag, srcRect, dstRect, paint)
-                            } else {
-                                canvas?.drawBitmap(bmpUnclicked, srcRect, dstRect, paint)
-                            }
-                        }
-                    }
+                         else
+                            canvas?.drawBitmap( if (game.hasFlag(i,j)) bmpFlag else bmpUnclicked, srcRect, dstRect, paint)
+                   }
                     BlockState.BombClicked -> {
                         canvas?.drawBitmap(bmpBombClicked, srcRect, dstRect, paint)
                     }
                     BlockState.Unclicked -> {
-                        if (game.hasFlag(i,j)) {
-                            canvas?.drawBitmap(bmpFlag, srcRect, dstRect, paint)
-                        } else {
-                            canvas?.drawBitmap(bmpUnclicked, srcRect, dstRect, paint)
-                        }
+                        if (game.state == GameState.Lose)
+                            canvas?.drawBitmap(if (game.hasFlag(i, j)) bmpBombWrong else bmpUnclicked, srcRect, dstRect, paint)
+                         else
+                            canvas?.drawBitmap(if (game.hasFlag(i, j)) bmpFlag else bmpUnclicked, srcRect, dstRect, paint)
                     }
                     BlockState.Clicked -> {
                         canvas?.drawBitmap(bmpClicked, srcRect, dstRect, paint)
@@ -221,7 +266,9 @@ class GameView(context: Context) : View(context) {
 
 
         when (event?.action) {
+
             MotionEvent.ACTION_DOWN -> {
+                checkGameTimer()
                 lastTime = currentTimeMillis()
 
                 if (smileyClicked) {
@@ -229,22 +276,25 @@ class GameView(context: Context) : View(context) {
                     invalidate()
                 }
 
-                timer = Timer("vibrator", true)
-                timer!!.schedule(300) {
-                    val v: Vibrator = context.getSystemService(VIBRATOR_SERVICE) as Vibrator
-                    v.vibrate(100)
+                if (gameSafe.flagsRemained > 0) {
+                    vibrateTimer = Timer("vibrator", true)
+                    vibrateTimer!!.schedule(300) {
+                        val v: Vibrator = context.getSystemService(VIBRATOR_SERVICE) as Vibrator
+                        v.vibrate(100)
+                    }
                 }
             }
             MotionEvent.ACTION_UP -> {
-
-                if (timer != null) {
-                    timer!!.cancel()
-                    timer = null
+                checkGameTimer()
+                if (vibrateTimer != null) {
+                    vibrateTimer!!.cancel()
+                    vibrateTimer = null
                 }
 
                 if (smileyClicked) {
                     smileyState = SmileyState.Unclicked
                     game = null
+                    stopGameTimer()
                     invalidate();
                 } else {
                     if (gameSafe.state == GameState.Continue) {
@@ -252,15 +302,16 @@ class GameView(context: Context) : View(context) {
                             gameSafe.onShortClick(i, j)
                             when (gameSafe.state) {
                                 GameState.Win -> {
-                                    smileyState = SmileyState.Win
+                                    win()
                                 }
                                 GameState.Lose -> {
-                                    smileyState = SmileyState.Lose
+                                    lose()
                                 }
                                 else -> {  }
                             }
                         } else {
-                            gameSafe.onLongClick(i, j)
+                            if (gameSafe.flagsRemained > 0)
+                               gameSafe.onLongClick(i, j)
                         }
                         invalidate()
                     }
@@ -268,5 +319,56 @@ class GameView(context: Context) : View(context) {
             }
         }
         return true
+    }
+
+
+    val _handler = Handler()
+
+    fun checkGameTimer() {
+        if (!firstClick)
+            return
+
+        firstClick = false
+        timerTime = currentTimeMillis()
+        gameTimer = Timer("game", true)
+        gameTimer!!.schedule(500, 500) {
+           // Log.d("test_test","game timer")
+            _handler.post({
+                val msecs = currentTimeMillis() - timerTime
+
+                //var elapsedTime = msecs + 3590000
+                var elapsedTime = msecs
+                val fmt = "%%0%dd".format( 2)
+                elapsedTime = elapsedTime / 1000
+                val seconds = fmt.format( elapsedTime % 60)
+                val minutes = fmt.format(elapsedTime / 60)
+                time =  minutes + ":" + seconds
+
+                if (game != null) {
+                    game!!.onTime(time)
+                    if (game!!.state == GameState.Lose)
+                        lose()
+                }
+
+                invalidate()
+            })
+        }
+    }
+
+    fun stopGameTimer() {
+        if (gameTimer != null) {
+            gameTimer!!.cancel()
+            gameTimer = null
+        }
+    }
+
+    fun win() {
+        smileyState = SmileyState.Win
+        stopGameTimer()
+    }
+
+    fun lose() {
+        smileyState = SmileyState.Lose
+        stopGameTimer()
     }
 }

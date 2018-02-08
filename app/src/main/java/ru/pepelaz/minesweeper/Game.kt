@@ -66,23 +66,40 @@ class Game {
         return blocks[i][j].flag
     }
 
-    fun onShortClick(i: Int, j :Int)  {
-        if (blocks[i][j].state == BlockState.Bomb) {
-            blocks[i][j].state = BlockState.BombClicked
+    fun onTime(time: String) {
+        if (time == "60:00")
             state = GameState.Lose
-            return
+    }
+
+    fun onShortClick(i: Int, j :Int)  {
+
+        if (blocks[i][j].flag) {
+            blocks[i][j].flag = false
+            flagsRemained++
+        } else {
+
+            if (blocks[i][j].state == BlockState.Bomb) {
+                blocks[i][j].state = BlockState.BombClicked
+                state = GameState.Lose
+                return
+            }
+
+            calcBombsAround(i, j)
+
+            if (blockRemained == 0)
+                state = GameState.Win
         }
-
-        calcBombsAround(i, j)
-
-        if (blockRemained == 0)
-            state = GameState.Win
     }
 
     fun onLongClick(i: Int, j :Int) {
-        val state =  blocks[i][j].state
-        blocks[i][j].flag = if (state == BlockState.Unclicked || state == BlockState.Bomb) true else false
-        flagsRemained--
+        if (blocks[i][j].flag) {
+            blocks[i][j].flag = false
+            flagsRemained++
+        }  else {
+            val state = blocks[i][j].state
+            blocks[i][j].flag = if (state == BlockState.Unclicked || state == BlockState.Bomb) true else false
+            flagsRemained--
+        }
     }
 
     fun calcBombsAround(i: Int, j :Int) {
@@ -180,6 +197,5 @@ class Game {
                 calcBombsAround(i + 1, j + 1)
         }
     }
-
 
 }
